@@ -95,7 +95,7 @@ df.rename(columns=rename_dict, inplace=True)
 # supprimer colonnes dupliquées
 df = df.loc[:, ~df.columns.duplicated()]
 
-# nettoyer valeurs Google Sheets
+# remplacer cellules vides
 df = df.replace(r'^\s*$', 0, regex=True)
 
 # créer colonnes manquantes
@@ -104,8 +104,10 @@ for liste in colonnes_listes:
         df[liste] = 0
 
 # convertir en numérique
-df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce").fillna(0)
+df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce")
 
+# forcer les NaN à 0
+df[colonnes_listes] = df[colonnes_listes].fillna(0).astype(float)
 # -----------------------------
 # GEOJSON
 # -----------------------------
