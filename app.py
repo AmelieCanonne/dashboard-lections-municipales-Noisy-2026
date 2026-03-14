@@ -296,9 +296,15 @@ with col6:
     )
 
 with col7:
+
+    if score_minimum_second is not None:
+        valeur = f"{score_minimum_second:.1f}%"
+    else:
+        valeur = "—"
+
     metric_box(
         "Score minimum du second dans les bureaux restants",
-        f"{score_minimum_second:.1f}%",
+        valeur,
         "#fff4e6"
     )
 # -----------------------------
