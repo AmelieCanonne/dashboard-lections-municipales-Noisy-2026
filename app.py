@@ -72,11 +72,16 @@ def load_data():
 
 df = load_data()
 
-# nettoyer colonnes
 df.columns = df.columns.str.strip()
+
 df["bureau_id"] = pd.to_numeric(df["bureau_id"], errors="coerce")
-# renommer Code BV
-df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
+
+# -----------------------------
+# CONVERSION NUMERIQUE
+# -----------------------------
+
+for col in ["Votants","Exprimés","Blancs","Nuls","Inscrits"]:
+    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
 # -----------------------------
 # RENOMMAGE DES COLONNES LISTES
@@ -92,22 +97,14 @@ for col in df.columns:
 
 df.rename(columns=rename_dict, inplace=True)
 
-# supprimer colonnes dupliquées
 df = df.loc[:, ~df.columns.duplicated()]
 
-# remplacer cellules vides
-df = df.replace(r'^\s*$', 0, regex=True)
-
-# créer colonnes manquantes
 for liste in colonnes_listes:
     if liste not in df.columns:
         df[liste] = 0
 
-# convertir en numérique
-df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce")
+df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce").fillna(0)
 
-# forcer les NaN à 0
-df[colonnes_listes] = df[colonnes_listes].fillna(0).astype(float)
 # -----------------------------
 # GEOJSON
 # -----------------------------
@@ -119,7 +116,7 @@ with open("bureaux_noisy.geojson") as f:
 # CALCULS
 # -----------------------------
 
-df["exprimes"] = pd.to_numeric(df["Exprimés"], errors="coerce").fillna(0)
+df["exprimes"] = df["Exprimés"]
 df["exprimes_safe"] = df["exprimes"].replace(0,1)
 
 for l in colonnes_listes:
@@ -152,11 +149,13 @@ df["top1_pct"] = df["top1_voix"] / df["exprimes_safe"] * 100
 for feature in geojson["features"]:
 
     bureau = feature["properties"]["bureau"]
+
     ligne = df[df["bureau_id"] == bureau]
 
     if not ligne.empty:
 
         ligne = ligne.iloc[0]
+
         leader = ligne["leader"]
 
         feature["properties"]["color"] = COULEURS.get(leader,[200,200,200])
@@ -178,39 +177,36 @@ for feature in geojson["features"]:
 # -----------------------------
 
 totaux = df[colonnes_listes].sum()
+
 classement = totaux.sort_values(ascending=False)
 
-bureaux_remontes = (df["exprimes"] > 0).sum()
+bureaux_remontes = (df["Exprimés"] > 0).sum()
 bureaux_total = len(df)
 
-bureaux_restants = bureaux_total - bureaux_remontes
+# -----------------------------
+# VOIX RESTANTES (CORRIGÉ)
+# -----------------------------
 
-inscrits_restants = df.loc[df["exprimes"] == 0, "Inscrits"].sum()
-voix_restantes_estimees = int(inscrits_restants * 0.55)
+total_votants = df["Votants"].sum()
 
-voix_necessaires = 0
-score_minimum_second = 0
+total_depouilles = (df["Exprimés"] + df["Blancs"] + df["Nuls"]).sum()
 
-if totaux.sum() > 0 and voix_restantes_estimees > 0 and len(classement) > 1:
+voix_restantes_estimees = int(total_votants - total_depouilles)
 
-    premier = classement.index[0]
-    deuxieme = classement.index[1]
+# -----------------------------
+# AVANCE
+# -----------------------------
 
-    voix_premier = totaux[premier]
-    voix_deuxieme = totaux[deuxieme]
-
-    avance = voix_premier - voix_deuxieme
-    voix_necessaires = avance + 1
-
-    score_minimum_second = (
-        (voix_deuxieme + voix_restantes_estimees) /
-        (voix_premier + voix_deuxieme + voix_restantes_estimees)
-    ) * 100
-
+if len(classement) > 1:
+    avance = classement.iloc[0] - classement.iloc[1]
 else:
     avance = 0
 
 leader_global = classement.index[0] if totaux.sum() > 0 else "—"
+
+# -----------------------------
+# PROBA
+# -----------------------------
 
 prob_leader = 0
 
@@ -218,6 +214,7 @@ if "prob_prec" not in st.session_state:
     st.session_state.prob_prec = prob_leader
 
 prob_leader = 0.7 * st.session_state.prob_prec + 0.3 * prob_leader
+
 st.session_state.prob_prec = prob_leader
 
 # -----------------------------
@@ -227,24 +224,13 @@ st.session_state.prob_prec = prob_leader
 col1,col2,col3,col4,col5,col6,col7 = st.columns(7)
 
 col1.metric("Bureaux dépouillés",f"{bureaux_remontes}/{bureaux_total}")
+
 col2.metric("Liste en tête",leader_global)
+
 col3.metric("Avance",f"{avance} voix")
+
 col4.metric("Probabilité victoire",f"{prob_leader*100:.1f}%")
 
 with col5:
     st.markdown("**Voix restantes**  \n**estimées**")
     st.metric("", voix_restantes_estimees)
-
-with col6:
-    metric_box(
-        "Voix nécessaires au 2nd pour prendre la tête",
-        voix_necessaires,
-        "#eef6ff"
-    )
-
-with col7:
-    metric_box(
-        "Score minimum du second dans les bureaux restants",
-        f"{score_minimum_second:.1f}%",
-        "#fff4e6"
-    )
