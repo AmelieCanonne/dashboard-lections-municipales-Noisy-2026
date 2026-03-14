@@ -64,9 +64,13 @@ COULEURS = {
 # CHARGEMENT DES DONNÉES
 # -----------------------------
 
-df = pd.read_excel("resultats_test_municipales_structure.xlsx").fillna(0)
+@st.cache_data(ttl=3)
+def load_data():
+    url = "https://docs.google.com/spreadsheets/d/1-PtRHi2y2JCcw-U1aQr3FKHtuJguL1zT9naDObeOURs/export?format=csv&gid=0"
+    return pd.read_csv(url)
 
-with open("bureaux_noisy.geojson") as f:
+df = load_data().fillna(0)
+with open("/Users/ameliecanonne/App Elections/bureaux_noisy.geojson") as f:
     geojson = json.load(f)
 
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
