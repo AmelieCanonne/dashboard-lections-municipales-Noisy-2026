@@ -74,7 +74,7 @@ df = load_data()
 
 # nettoyer colonnes
 df.columns = df.columns.str.strip()
-
+df["bureau_id"] = pd.to_numeric(df["bureau_id"], errors="coerce")
 # renommer Code BV
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
 
@@ -185,11 +185,8 @@ bureaux_total = len(df)
 
 bureaux_restants = bureaux_total - bureaux_remontes
 
-if bureaux_remontes > 0:
-    moyenne_exprimes = df[df["exprimes"] > 0]["exprimes"].mean()
-    voix_restantes_estimees = int(bureaux_restants * moyenne_exprimes)
-else:
-    voix_restantes_estimees = 0
+inscrits_restants = df.loc[df["exprimes"] == 0, "Inscrits"].sum()
+voix_restantes_estimees = int(inscrits_restants * 0.55)
 
 voix_necessaires = 0
 score_minimum_second = 0
