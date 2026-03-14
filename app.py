@@ -65,7 +65,7 @@ COULEURS = {
 # CHARGEMENT DES DONNÉES
 # -----------------------------
 
-@st.cache_data(ttl=3)
+@st.cache_data(ttl=30)
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/1-PtRHi2y2JCcw-U1aQr3FKHtuJguL1zT9naDObeOURs/export?format=csv&gid=0"
     return pd.read_csv(url)
@@ -109,9 +109,12 @@ df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce").
 # GEOJSON
 # -----------------------------
 
-with open("bureaux_noisy.geojson") as f:
-    geojson = json.load(f)
+@st.cache_data
+def load_geojson():
+    with open("bureaux_noisy.geojson") as f:
+        return json.load(f)
 
+geojson = load_geojson()
 # -----------------------------
 # CALCULS
 # -----------------------------
@@ -131,14 +134,19 @@ df["color"] = df["leader"].map(COULEURS)
 # TOP 3
 # -----------------------------
 
-df["top1"] = df[colonnes_listes].idxmax(axis=1)
-df["top1_voix"] = df[colonnes_listes].max(axis=1)
+values = df[colonnes_listes].values
 
-df["top2"] = df[colonnes_listes].apply(lambda x: x.nlargest(2).index[-1], axis=1)
-df["top2_voix"] = df[colonnes_listes].apply(lambda x: x.nlargest(2).values[-1], axis=1)
+sorted_idx = np.argsort(-values, axis=1)
 
-df["top3"] = df[colonnes_listes].apply(lambda x: x.nlargest(3).index[-1], axis=1)
-df["top3_voix"] = df[colonnes_listes].apply(lambda x: x.nlargest(3).values[-1], axis=1)
+lists_array = np.array(colonnes_listes)
+
+df["top1"] = lists_array[sorted_idx[:,0]]
+df["top2"] = lists_array[sorted_idx[:,1]]
+df["top3"] = lists_array[sorted_idx[:,2]]
+
+df["top1_voix"] = values[np.arange(len(values)), sorted_idx[:,0]]
+df["top2_voix"] = values[np.arange(len(values)), sorted_idx[:,1]]
+df["top3_voix"] = values[np.arange(len(values)), sorted_idx[:,2]]
 
 df["top1_pct"] = df["top1_voix"] / df["exprimes_safe"] * 100
 
@@ -187,11 +195,15 @@ bureaux_total = len(df)
 # VOIX RESTANTES (CORRIGÉ)
 # -----------------------------
 
-total_votants = df["Votants"].sum()
+total_votants = pd.to_numeric(df["Votants"], errors="coerce").fillna(0).sum()
 
-total_depouilles = (df["Exprimés"] + df["Blancs"] + df["Nuls"]).sum()
+total_depouilles = (
+    pd.to_numeric(df["Exprimés"], errors="coerce").fillna(0) +
+    pd.to_numeric(df["Blancs"], errors="coerce").fillna(0) +
+    pd.to_numeric(df["Nuls"], errors="coerce").fillna(0)
+).sum()
 
-voix_restantes_estimees = int(total_votants - total_depouilles)
+voix_restantes_estimees = max(0, int(total_votants - total_depouilles))
 
 # -----------------------------
 # AVANCE
