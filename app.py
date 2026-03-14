@@ -73,14 +73,18 @@ def load_data():
 
 df = load_data()
 
-df = df.replace(r'^\s*$', 0, regex=True)
-df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce").fillna(0)
-
 # IMPORTANT : chemin relatif pour Streamlit Cloud
 with open("bureaux_noisy.geojson") as f:
     geojson = json.load(f)
 
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
+df = df.replace(r'^\s*$', 0, regex=True)
+
+for liste in colonnes_listes:
+    if liste not in df.columns:
+        df[liste] = 0
+
+df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce").fillna(0)
 
 # -----------------------------
 # RENOMMAGE DES COLONNES
