@@ -68,6 +68,17 @@ df = pd.read_excel("resultats_test_municipales_structure.xlsx").fillna(0)
 
 with open("bureaux_noisy.geojson") as f:
     geojson = json.load(f)
+    
+for feature in geojson["features"]:
+    bureau = feature["properties"]["bureau_id"]
+
+    ligne = df[df["bureau_id"] == bureau]
+
+    if len(ligne) > 0:
+        leader = ligne.iloc[0]["leader"]
+        feature["properties"]["color"] = COULEURS.get(leader, [200,200,200])
+    else:
+        feature["properties"]["color"] = [200,200,200]
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
 
 # -----------------------------
@@ -276,7 +287,8 @@ layer = pdk.Layer(
     pickable=True,
     auto_highlight=True,
     get_fill_color="properties.color",
-    get_line_color=[0,0,0])
+    get_line_color=[0,0,0]
+)
 
 view_state = pdk.ViewState(
     latitude=48.889,
