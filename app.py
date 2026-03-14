@@ -28,7 +28,6 @@ def metric_box(label, value, color):
 
 st.set_page_config(layout="wide")
 
-# rafraîchissement automatique
 st_autorefresh(interval=5000)
 
 st.title("Résultats 1er tour par bureau")
@@ -73,23 +72,14 @@ def load_data():
 
 df = load_data()
 
-# IMPORTANT : chemin relatif pour Streamlit Cloud
-with open("bureaux_noisy.geojson") as f:
-    geojson = json.load(f)
+# nettoyer colonnes
+df.columns = df.columns.str.strip()
 
+# renommer Code BV
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
-# supprimer colonnes dupliquées
-df = df.loc[:, ~df.columns.duplicated()]
-df = df.replace(r'^\s*$', 0, regex=True)
-
-for liste in colonnes_listes:
-    if liste not in df.columns:
-        df[liste] = 0
-
-df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce").fillna(0)
 
 # -----------------------------
-# RENOMMAGE DES COLONNES
+# RENOMMAGE DES COLONNES LISTES
 # -----------------------------
 
 rename_dict = {}
@@ -102,13 +92,30 @@ for col in df.columns:
 
 df.rename(columns=rename_dict, inplace=True)
 
-# -----------------------------
-# CALCULS
-# -----------------------------
+# supprimer colonnes dupliquées
+df = df.loc[:, ~df.columns.duplicated()]
 
+# nettoyer valeurs Google Sheets
+df = df.replace(r'^\s*$', 0, regex=True)
+
+# créer colonnes manquantes
 for liste in colonnes_listes:
     if liste not in df.columns:
         df[liste] = 0
+
+# convertir en numérique
+df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce").fillna(0)
+
+# -----------------------------
+# GEOJSON
+# -----------------------------
+
+with open("bureaux_noisy.geojson") as f:
+    geojson = json.load(f)
+
+# -----------------------------
+# CALCULS
+# -----------------------------
 
 df["exprimes"] = df[colonnes_listes].sum(axis=1)
 df["exprimes_safe"] = df["exprimes"].replace(0,1)
@@ -137,7 +144,7 @@ df["top3_voix"] = df[colonnes_listes].apply(lambda x: x.nlargest(3).values[-1], 
 df["top1_pct"] = df["top1_voix"] / df["exprimes_safe"] * 100
 
 # -----------------------------
-# INJECTION DANS GEOJSON
+# GEOJSON INJECTION
 # -----------------------------
 
 for feature in geojson["features"]:
@@ -182,10 +189,6 @@ if bureaux_remontes > 0:
 else:
     voix_restantes_estimees = 0
 
-# -----------------------------
-# VOIX NECESSAIRES
-# -----------------------------
-
 voix_necessaires = 0
 score_minimum_second = 0
 
@@ -210,13 +213,8 @@ else:
 
 leader_global = classement.index[0] if totaux.sum() > 0 else "—"
 
-# -----------------------------
-# PROBA
-# -----------------------------
-
 prob_leader = 0
 
-# LISSAGE
 if "prob_prec" not in st.session_state:
     st.session_state.prob_prec = prob_leader
 
@@ -251,72 +249,3 @@ with col7:
         f"{score_minimum_second:.1f}%",
         "#fff4e6"
     )
-
-# -----------------------------
-# CARTE
-# -----------------------------
-
-layer = pdk.Layer(
-    "GeoJsonLayer",
-    geojson,
-    pickable=True,
-    auto_highlight=True,
-    get_fill_color="properties.color",
-    get_line_color=[0,0,0]
-)
-
-view_state = pdk.ViewState(
-    latitude=48.889,
-    longitude=2.462,
-    zoom=13
-)
-
-tooltip = {
-    "html": """
-    <b>Bureau {bureau}</b><br>
-    Exprimés : {exprimes}<br><br>
-
-    🥇 {top1} : {top1_voix} voix ({top1_pct}%)<br>
-    🥈 {top2} : {top2_voix} voix<br>
-    🥉 {top3} : {top3_voix} voix
-    """,
-    "style": {"backgroundColor": "black", "color": "white"}
-}
-
-col_map, col_chart = st.columns([2,1])
-
-with col_map:
-
-    st.subheader("Carte des bureaux")
-
-    st.pydeck_chart(
-        pdk.Deck(
-            layers=[layer],
-            initial_view_state=view_state,
-            tooltip=tooltip
-        )
-    )
-
-with col_chart:
-
-    st.subheader("Scores globaux")
-
-    fig = px.bar(
-        x=classement.index,
-        y=classement.values,
-        text=classement.values
-    )
-
-    fig.update_traces(textposition="outside")
-
-    st.plotly_chart(fig,use_container_width=True)
-
-# -----------------------------
-# TABLEAU
-# -----------------------------
-
-st.subheader("Résultats par bureau")
-
-st.dataframe(
-    df[["bureau_id","exprimes","leader"] + colonnes_listes]
-)
