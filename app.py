@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import geopandas as gpd
 import pydeck as pdk
 from streamlit_autorefresh import st_autorefresh
 import plotly.express as px
 import numpy as np
+import json
 def metric_box(label, value, color):
     st.markdown(
         f"""
@@ -64,15 +64,10 @@ COULEURS = {
 # CHARGEMENT DES DONNÉES
 # -----------------------------
 
-df = pd.read_excel(
-    "/Users/ameliecanonne/Downloads/resultats_test_municipales_structure.xlsx"
-).fillna(0)
+df = pd.read_excel("resultats.xlsx").fillna(0)
 
-geo = gpd.read_file(
-    "/Users/ameliecanonne/bureaux_noisy.geojson"
-)
-
-geo.rename(columns={'bureau':'bureau_id'}, inplace=True)
+with open("bureaux_noisy.geojson") as f:
+    geojson = json.load(f)
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
 
 # -----------------------------
@@ -121,10 +116,6 @@ df["top3"] = df[colonnes_listes].apply(lambda x: x.nlargest(3).index[-1], axis=1
 df["top3_voix"] = df[colonnes_listes].apply(lambda x: x.nlargest(3).values[-1], axis=1)
 df["top1_pct"] = df["top1_voix"] / df["exprimes_safe"] * 100
 # -----------------------------
-# JOINTURE GEO
-# -----------------------------
-
-gdf = geo.merge(df, on="bureau_id")
 
 # -----------------------------
 # MONTE CARLO
@@ -281,7 +272,7 @@ with col7:
 
 layer = pdk.Layer(
     "GeoJsonLayer",
-    gdf,
+    geojson,
     pickable=True,
     auto_highlight=True,
     get_fill_color="color",
@@ -289,11 +280,10 @@ layer = pdk.Layer(
 )
 
 view_state = pdk.ViewState(
-    latitude=gdf.geometry.centroid.y.mean(),
-    longitude=gdf.geometry.centroid.x.mean(),
+    latitude=48.889,
+    longitude=2.462,
     zoom=13
 )
-
 tooltip = {
     "html": """
     <b>Bureau {bureau_id}</b><br><br>

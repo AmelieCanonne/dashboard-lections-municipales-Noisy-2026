@@ -1,11 +1,8 @@
 streamlit
 pandas
-geopandas
 pydeck
 plotly
 numpy
 openpyxl
 streamlit-autorefresh
-shapely
-fiona
 pyproj
