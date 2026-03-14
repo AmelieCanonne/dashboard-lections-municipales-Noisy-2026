@@ -275,9 +275,8 @@ layer = pdk.Layer(
     geojson,
     pickable=True,
     auto_highlight=True,
-    get_fill_color="color",
-    get_line_color=[0,0,0]
-)
+    get_fill_color="properties.color",
+    get_line_color=[0,0,0])
 
 view_state = pdk.ViewState(
     latitude=48.889,
