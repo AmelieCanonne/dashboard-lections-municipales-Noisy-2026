@@ -71,7 +71,10 @@ def load_data():
     url = "https://docs.google.com/spreadsheets/d/1-PtRHi2y2JCcw-U1aQr3FKHtuJguL1zT9naDObeOURs/export?format=csv&gid=0"
     return pd.read_csv(url)
 
-df = load_data().fillna(0)
+df = load_data()
+
+df = df.replace(r'^\s*$', 0, regex=True)
+df[colonnes_listes] = df[colonnes_listes].apply(pd.to_numeric, errors="coerce").fillna(0)
 
 # IMPORTANT : chemin relatif pour Streamlit Cloud
 with open("bureaux_noisy.geojson") as f:
