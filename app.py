@@ -70,7 +70,7 @@ def load_data():
     return pd.read_csv(url)
 
 df = load_data().fillna(0)
-with open("/Users/ameliecanonne/App Elections/bureaux_noisy.geojson") as f:
+with open("bureaux_noisy.geojson") as f:
     geojson = json.load(f)
 
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
