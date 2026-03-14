@@ -68,9 +68,8 @@ df = pd.read_excel("resultats_test_municipales_structure.xlsx").fillna(0)
 
 with open("bureaux_noisy.geojson") as f:
     geojson = json.load(f)
-    
 for feature in geojson["features"]:
-    bureau = feature["properties"]["bureau_id"]
+    bureau = feature["properties"]["bureau"]
 
     ligne = df[df["bureau_id"] == bureau]
 
