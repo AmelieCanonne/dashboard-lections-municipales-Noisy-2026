@@ -119,7 +119,7 @@ with open("bureaux_noisy.geojson") as f:
 # CALCULS
 # -----------------------------
 
-df["exprimes"] = df[colonnes_listes].sum(axis=1)
+df["exprimes"] = pd.to_numeric(df["Exprimés"], errors="coerce").fillna(0)
 df["exprimes_safe"] = df["exprimes"].replace(0,1)
 
 for l in colonnes_listes:
