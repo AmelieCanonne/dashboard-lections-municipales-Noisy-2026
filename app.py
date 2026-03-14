@@ -65,6 +65,7 @@ COULEURS = {
 # -----------------------------
 
 df = pd.read_excel("resultats_test_municipales_structure.xlsx").fillna(0)
+st.write(df.columns)
 with open("bureaux_noisy.geojson") as f:
     geojson = json.load(f)
 
@@ -119,15 +120,34 @@ df["top3_voix"] = df[colonnes_listes].apply(lambda x: x.nlargest(3).values[-1], 
 df["top1_pct"] = df["top1_voix"] / df["exprimes_safe"] * 100
 # -----------------------------
 for feature in geojson["features"]:
+
     bureau = feature["properties"]["bureau"]
 
     ligne = df[df["bureau_id"] == bureau]
 
-    if len(ligne) > 0:
-        leader = ligne.iloc[0]["leader"]
-        feature["properties"]["color"] = COULEURS.get(leader, [200,200,200])
+    if not ligne.empty:
+
+        ligne = ligne.iloc[0]
+
+        leader = ligne["leader"]
+
+        feature["properties"]["color"] = COULEURS.get(leader,[200,200,200])
+
+        feature["properties"]["top1"] = ligne["top1"]
+        feature["properties"]["top1_voix"] = int(ligne["top1_voix"])
+        feature["properties"]["top1_pct"] = round(ligne["top1_pct"],1)
+
+        feature["properties"]["top2"] = ligne["top2"]
+        feature["properties"]["top2_voix"] = int(ligne["top2_voix"])
+
+        feature["properties"]["top3"] = ligne["top3"]
+        feature["properties"]["top3_voix"] = int(ligne["top3_voix"])
+
+        feature["properties"]["exprimes"] = int(ligne["exprimes"])
+
     else:
-        feature["properties"]["color"] = [200,200,200]
+
+        feature["properties"]["color"] = [220,220,220]
 # -----------------------------
 # MONTE CARLO
 # -----------------------------
@@ -297,7 +317,8 @@ view_state = pdk.ViewState(
 )
 tooltip = {
     "html": """
-    <b>Bureau {bureau_id}</b><br><br>
+    <b>Bureau {bureau}</b><br>
+    Exprimés : {exprimes}<br><br>
 
     🥇 {top1} : {top1_voix} voix ({top1_pct}%)<br>
     🥈 {top2} : {top2_voix} voix<br>
@@ -328,13 +349,13 @@ with col_chart:
 
     st.subheader("Scores globaux")
 
-    fig = px.bar(
-        x=classement.index,
-        y=classement.values,
-        text=classement.values
-    )
+    fig = px.bar(x=classement.index,
+                 y=classement.values,
+                 text=classement.values,
+                 labels={"x":"Liste","y":"Voix"})
+    fig.update_traces(textposition="outside",
+                      hovertemplate="<b>%{x}</b><br>%{y} voix<extra></extra>")
 
-    fig.update_traces(textposition="outside")
     fig.update_layout(height=600)
 
     st.plotly_chart(fig,use_container_width=True,key="scores_chart")
