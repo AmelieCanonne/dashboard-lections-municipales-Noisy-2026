@@ -65,7 +65,7 @@ COULEURS = {
 # -----------------------------
 
 df = pd.read_excel("resultats_test_municipales_structure.xlsx").fillna(0)
-st.write(df.columns)
+
 with open("bureaux_noisy.geojson") as f:
     geojson = json.load(f)
 
