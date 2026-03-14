@@ -78,6 +78,8 @@ with open("bureaux_noisy.geojson") as f:
     geojson = json.load(f)
 
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
+# supprimer colonnes dupliquées
+df = df.loc[:, ~df.columns.duplicated()]
 df = df.replace(r'^\s*$', 0, regex=True)
 
 for liste in colonnes_listes:
