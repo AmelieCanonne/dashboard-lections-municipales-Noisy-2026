@@ -65,19 +65,10 @@ COULEURS = {
 # -----------------------------
 
 df = pd.read_excel("resultats_test_municipales_structure.xlsx").fillna(0)
-
+st.write(df.columns)
 with open("bureaux_noisy.geojson") as f:
     geojson = json.load(f)
-for feature in geojson["features"]:
-    bureau = feature["properties"]["bureau"]
 
-    ligne = df[df["bureau_id"] == bureau]
-
-    if len(ligne) > 0:
-        leader = ligne.iloc[0]["leader"]
-        feature["properties"]["color"] = COULEURS.get(leader, [200,200,200])
-    else:
-        feature["properties"]["color"] = [200,200,200]
 df.rename(columns={'Code BV':'bureau_id'}, inplace=True)
 
 # -----------------------------
@@ -106,7 +97,9 @@ df["exprimes_safe"] = df["exprimes"].replace(0,1)
 
 for l in colonnes_listes:
     df[f"{l}_pct"] = df[l] / df["exprimes_safe"] * 100
-
+for liste in colonnes_listes:
+    if liste not in df.columns:
+        df[liste] = 0
 df["leader"] = df[colonnes_listes].idxmax(axis=1)
 df.loc[df["exprimes"] == 0, "leader"] = "AUCUN"
 
@@ -126,7 +119,16 @@ df["top3"] = df[colonnes_listes].apply(lambda x: x.nlargest(3).index[-1], axis=1
 df["top3_voix"] = df[colonnes_listes].apply(lambda x: x.nlargest(3).values[-1], axis=1)
 df["top1_pct"] = df["top1_voix"] / df["exprimes_safe"] * 100
 # -----------------------------
+for feature in geojson["features"]:
+    bureau = feature["properties"]["bureau"]
 
+    ligne = df[df["bureau_id"] == bureau]
+
+    if len(ligne) > 0:
+        leader = ligne.iloc[0]["leader"]
+        feature["properties"]["color"] = COULEURS.get(leader, [200,200,200])
+    else:
+        feature["properties"]["color"] = [200,200,200]
 # -----------------------------
 # MONTE CARLO
 # -----------------------------
