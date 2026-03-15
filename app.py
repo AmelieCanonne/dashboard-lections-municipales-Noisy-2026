@@ -138,7 +138,7 @@ def load_geo():
 geojson=load_geo()
 
 # dictionnaire bureau -> ligne dataframe
-df_map=df.set_index("bureau_id").to_dict("index")
+df_map=df.set_index(df["bureau_id"].astype(int)).to_dict("index")
 st.write("Bureaux dans df_map :", list(df_map.keys())[:20])
 st.write("Premier bureau geojson :", geojson["features"][0]["properties"]["bureau"])
 # enrichissement du geojson
