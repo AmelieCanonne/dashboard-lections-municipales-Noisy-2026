@@ -183,27 +183,29 @@ geojson=load_geo()
 
 for feature in geojson["features"]:
 
-    bureau=feature["properties"]["bureau"]
-    ligne=df[df["bureau_id"].astype(str)==str(bureau)]
+    bureau = int(feature["properties"]["bureau"])
+    
+    feature["properties"]["color"]=[200,200,200]
+
+    ligne = df.loc[df["bureau_id"] == bureau]
 
     if not ligne.empty:
 
-        ligne=ligne.iloc[0]
+        ligne = ligne.iloc[0]
 
-        feature["properties"]["color"]=ligne["color"]
+        feature["properties"]["color"] = ligne["color"]
 
-        feature["properties"]["top1"]=ligne["top1"]
-        feature["properties"]["top1_voix"]=int(ligne["top1_voix"])
-        feature["properties"]["top1_pct"]=round(ligne["top1_pct"],1)
+        feature["properties"]["top1"] = ligne["top1"]
+        feature["properties"]["top1_voix"] = int(ligne["top1_voix"])
+        feature["properties"]["top1_pct"] = round(ligne["top1_pct"],1)
 
-        feature["properties"]["top2"]=ligne["top2"]
-        feature["properties"]["top2_voix"]=int(ligne["top2_voix"])
+        feature["properties"]["top2"] = ligne["top2"]
+        feature["properties"]["top2_voix"] = int(ligne["top2_voix"])
 
-        feature["properties"]["top3"]=ligne["top3"]
-        feature["properties"]["top3_voix"]=int(ligne["top3_voix"])
+        feature["properties"]["top3"] = ligne["top3"]
+        feature["properties"]["top3_voix"] = int(ligne["top3_voix"])
 
-        feature["properties"]["exprimes"]=int(ligne["exprimes"])
-
+        feature["properties"]["exprimes"] = int(ligne["exprimes"])
 # -----------------------------
 # CARTE
 # -----------------------------
