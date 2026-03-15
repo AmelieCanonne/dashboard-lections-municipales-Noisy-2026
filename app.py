@@ -178,10 +178,10 @@ with c7:
 def load_geo():
     with open("bureaux_noisy.geojson") as f:
         return json.load(f)
-
-geojson=load_geo()
 st.write(df["bureau_id"].unique())
 st.write([f["properties"]["bureau"] for f in geojson["features"]])
+geojson=load_geo()
+
 
 for feature in geojson["features"]:
 
