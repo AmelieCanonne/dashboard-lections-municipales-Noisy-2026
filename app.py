@@ -183,7 +183,8 @@ def load_geo():
 
 
 geojson=load_geo()
-
+st.write([f["properties"]["bureau"] for f in geojson["features"]])
+st.write(df["bureau_id"].tolist())
 
 for feature in geojson["features"]:
 
