@@ -68,7 +68,6 @@ for l in LISTES:
 # -----------------------------
 
 df["exprimes"]=df["Exprimés"]
-
 df["exprimes_safe"]=df["exprimes"].replace(0,1)
 
 # leader bureau
@@ -98,17 +97,28 @@ df["top1_pct"]=df["top1_voix"]/df["exprimes_safe"]*100
 # -----------------------------
 
 totaux=df[LISTES].sum()
-
 classement=totaux.sort_values(ascending=False)
 
 bureaux_total=len(df)
-
 bureaux_depouilles=(df["Exprimés"]>0).sum()
 
-# voix restantes
-total_votants=df["Votants"].sum()
-total_depouilles=(df["Exprimés"]+df["Blancs"]+df["Nuls"]).sum()
+# barre progression
+progress_depouillement=bureaux_depouilles/bureaux_total if bureaux_total>0 else 0
 
+st.progress(progress_depouillement)
+st.caption(f"Dépouillement : {bureaux_depouilles}/{bureaux_total} bureaux")
+
+# participation
+total_inscrits=df["Inscrits"].sum()
+total_votants=df["Votants"].sum()
+
+if total_inscrits>0:
+    participation=total_votants/total_inscrits*100
+else:
+    participation=np.nan
+
+# voix restantes
+total_depouilles=(df["Exprimés"]+df["Blancs"]+df["Nuls"]).sum()
 voix_restantes=max(0,int(total_votants-total_depouilles))
 
 # avance
@@ -141,7 +151,12 @@ if voix_restantes>0 and len(classement)>1:
 
 c1,c2,c3,c4,c5,c6,c7=st.columns(7)
 
-c1.metric("Bureaux dépouillés",f"{bureaux_depouilles}/{bureaux_total}")
+if np.isnan(participation):
+    participation_display="—"
+else:
+    participation_display=f"{participation:.1f}%"
+
+c1.metric("Participation",participation_display)
 c2.metric("Liste en tête",leader)
 c3.metric("Avance",f"{avance} voix")
 c4.metric("Probabilité victoire","0%")
@@ -169,7 +184,6 @@ geojson=load_geo()
 for feature in geojson["features"]:
 
     bureau=feature["properties"]["bureau"]
-
     ligne=df[df["bureau_id"]==bureau]
 
     if not ligne.empty:
@@ -237,6 +251,7 @@ with col_chart:
 
 st.subheader("Résultats par bureau")
 
-st.dataframe(
-    df[["bureau_id","exprimes","leader"]+LISTES]
-)
+table=df[["bureau_id","exprimes","leader"]+LISTES].copy()
+table=table.replace(0,"—")
+
+st.dataframe(table)
