@@ -168,7 +168,7 @@ layer=pdk.Layer(
     "GeoJsonLayer",
     data=geojson,
     pickable=True,
-    get_fill_color="properties.color",
+    get_fill_color="[properties.color[0], properties.color[1], properties.color[2]]",
     get_line_color=[0,0,0],
     opacity=0.8,
     auto_highlight=True
