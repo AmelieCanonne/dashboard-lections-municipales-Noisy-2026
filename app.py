@@ -56,10 +56,9 @@ def load_data():
 
 df=load_data()
 
-# nettoyage colonnes dupliquées
 df = df.loc[:,~df.columns.duplicated()]
 
-df["bureau_id"]=pd.to_numeric(df["bureau_id"],errors="coerce").fillna(0).astype(int)
+df["bureau_id"]=pd.to_numeric(df["bureau_id"],errors="coerce").astype("Int64")
 
 # conversion numérique
 for col in ["Votants","Exprimés","Blancs","Nuls","Inscrits"]:
@@ -130,31 +129,35 @@ c4.metric("Bureaux dépouillés",f"{bureaux_depouilles}/{bureaux_total}")
 @st.cache_data
 def load_geo():
 
-    with open("/Users/ameliecanonne/App Elections/bureaux_noisy.geojson") as f:
+    with open("bureaux_noisy.geojson") as f:
 
         geo=json.load(f)
 
     return geo
 
 geojson=load_geo()
-st.write(geojson["features"][0]["properties"])
+
 # dictionnaire bureau -> ligne dataframe
 df_map=df.set_index("bureau_id").to_dict("index")
 
+# enrichissement du geojson
 for feature in geojson["features"]:
 
-    bureau=int(feature["properties"]["bureau"])
+    props = feature["properties"]
 
-    feature["properties"]["color"]=[200,200,200]
+    bureau = int(props["bureau"])
+
+    props["color"] = [200,200,200]
+    props["leader"] = "AUCUN"
+    props["exprimes"] = 0
 
     if bureau in df_map:
 
         ligne=df_map[bureau]
 
-        feature["properties"]["color"]=COULEURS.get(ligne["leader"],[200,200,200])
-
-        feature["properties"]["leader"]=ligne["leader"]
-        feature["properties"]["exprimes"]=int(ligne["exprimes"])
+        props["color"]=COULEURS.get(ligne["leader"],[200,200,200])
+        props["leader"]=ligne["leader"]
+        props["exprimes"]=int(ligne["exprimes"])
 
 # -----------------------------
 # CARTE
@@ -162,10 +165,11 @@ for feature in geojson["features"]:
 
 layer=pdk.Layer(
     "GeoJsonLayer",
-    geojson,
+    data=geojson,
     pickable=True,
     get_fill_color="properties.color",
     get_line_color=[0,0,0],
+    opacity=0.8,
     auto_highlight=True
 )
 
