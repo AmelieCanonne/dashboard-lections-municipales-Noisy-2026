@@ -180,6 +180,8 @@ def load_geo():
         return json.load(f)
 
 geojson=load_geo()
+st.write(df["bureau_id"].unique())
+st.write([f["properties"]["bureau"] for f in geojson["features"]])
 
 for feature in geojson["features"]:
 
