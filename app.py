@@ -176,51 +176,36 @@ with c7:
 # GEOJSON
 # -----------------------------
 
+# -----------------------------
+# GEOJSON
+# -----------------------------
+
 @st.cache_data
 def load_geo():
     with open("bureaux_noisy.geojson") as f:
         return json.load(f)
 
+geojson = load_geo()
 
-geojson=load_geo()
-st.write([f["properties"]["bureau"] for f in geojson["features"]])
-st.write(df["bureau_id"].tolist())
+# dictionnaire bureau -> ligne dataframe
+bureau_dict = df.set_index("bureau_id").to_dict("index")
 
 for feature in geojson["features"]:
 
-    # valeur brute du geojson
-    raw_bureau = feature["properties"].get("bureau")
-
-    # on normalise : "01" / "1" / 1 -> 1
-    try:
-        bureau = int(str(raw_bureau).lstrip("0"))
-    except:
-        bureau = None
+    bureau = int(feature["properties"]["bureau"])
 
     # couleur par défaut
     feature["properties"]["color"] = [200,200,200]
 
-    if bureau is not None:
+    if bureau in bureau_dict:
 
-        ligne = df.loc[df["bureau_id"] == bureau]
+        ligne = bureau_dict[bureau]
 
-        if not ligne.empty:
+        feature["properties"]["color"] = COULEURS.get(ligne["leader"], [200,200,200])
 
-            ligne = ligne.iloc[0]
-
-            feature["properties"]["color"] = ligne["color"]
-
-            feature["properties"]["top1"] = ligne["top1"]
-            feature["properties"]["top1_voix"] = int(ligne["top1_voix"])
-            feature["properties"]["top1_pct"] = round(ligne["top1_pct"],1)
-
-            feature["properties"]["top2"] = ligne["top2"]
-            feature["properties"]["top2_voix"] = int(ligne["top2_voix"])
-
-            feature["properties"]["top3"] = ligne["top3"]
-            feature["properties"]["top3_voix"] = int(ligne["top3_voix"])
-
-            feature["properties"]["exprimes"] = int(ligne["exprimes"])
+        feature["properties"]["exprimes"] = int(ligne["exprimes"])
+        feature["properties"]["top1"] = ligne["top1"]
+        feature["properties"]["top1_pct"] = round(ligne["top1_pct"],1)
 # -----------------------------
 # CARTE
 # -----------------------------
