@@ -51,6 +51,8 @@ def load_data():
     return df
 
 df=load_data()
+df["bureau_id"] = pd.to_numeric(df["bureau_id"], errors="coerce").astype("Int64")
+df = df.dropna(subset=["bureau_id"])
 
 # conversion numérique
 for col in ["bureau_id","Votants","Exprimés","Blancs","Nuls","Inscrits"]:
@@ -178,36 +180,46 @@ with c7:
 def load_geo():
     with open("bureaux_noisy.geojson") as f:
         return json.load(f)
-st.write(df["bureau_id"].unique())
-st.write([f["properties"]["bureau"] for f in geojson["features"]])
+
+
 geojson=load_geo()
 
 
 for feature in geojson["features"]:
 
-    bureau = int(feature["properties"]["bureau"])
-    
-    feature["properties"]["color"]=[200,200,200]
+    # valeur brute du geojson
+    raw_bureau = feature["properties"].get("bureau")
 
-    ligne = df.loc[df["bureau_id"] == bureau]
+    # on normalise : "01" / "1" / 1 -> 1
+    try:
+        bureau = int(str(raw_bureau).lstrip("0"))
+    except:
+        bureau = None
 
-    if not ligne.empty:
+    # couleur par défaut
+    feature["properties"]["color"] = [200,200,200]
 
-        ligne = ligne.iloc[0]
+    if bureau is not None:
 
-        feature["properties"]["color"] = ligne["color"]
+        ligne = df.loc[df["bureau_id"] == bureau]
 
-        feature["properties"]["top1"] = ligne["top1"]
-        feature["properties"]["top1_voix"] = int(ligne["top1_voix"])
-        feature["properties"]["top1_pct"] = round(ligne["top1_pct"],1)
+        if not ligne.empty:
 
-        feature["properties"]["top2"] = ligne["top2"]
-        feature["properties"]["top2_voix"] = int(ligne["top2_voix"])
+            ligne = ligne.iloc[0]
 
-        feature["properties"]["top3"] = ligne["top3"]
-        feature["properties"]["top3_voix"] = int(ligne["top3_voix"])
+            feature["properties"]["color"] = ligne["color"]
 
-        feature["properties"]["exprimes"] = int(ligne["exprimes"])
+            feature["properties"]["top1"] = ligne["top1"]
+            feature["properties"]["top1_voix"] = int(ligne["top1_voix"])
+            feature["properties"]["top1_pct"] = round(ligne["top1_pct"],1)
+
+            feature["properties"]["top2"] = ligne["top2"]
+            feature["properties"]["top2_voix"] = int(ligne["top2_voix"])
+
+            feature["properties"]["top3"] = ligne["top3"]
+            feature["properties"]["top3_voix"] = int(ligne["top3_voix"])
+
+            feature["properties"]["exprimes"] = int(ligne["exprimes"])
 # -----------------------------
 # CARTE
 # -----------------------------
