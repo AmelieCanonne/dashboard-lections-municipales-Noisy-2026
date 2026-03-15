@@ -43,19 +43,26 @@ COULEURS = {
 # DATA
 # -----------------------------
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=10)
 def load_data():
+
     url="https://docs.google.com/spreadsheets/d/1-PtRHi2y2JCcw-U1aQr3FKHtuJguL1zT9naDObeOURs/export?format=csv&gid=0"
+
     df=pd.read_csv(url)
+
     df.columns=df.columns.str.strip()
+
     return df
 
 df=load_data()
-df["bureau_id"] = pd.to_numeric(df["bureau_id"], errors="coerce").astype("Int64")
-df = df.dropna(subset=["bureau_id"])
+
+# nettoyage colonnes dupliquées
+df = df.loc[:,~df.columns.duplicated()]
+
+df["bureau_id"]=pd.to_numeric(df["bureau_id"],errors="coerce").fillna(0).astype(int)
 
 # conversion numérique
-for col in ["bureau_id","Votants","Exprimés","Blancs","Nuls","Inscrits"]:
+for col in ["Votants","Exprimés","Blancs","Nuls","Inscrits"]:
     if col in df.columns:
         df[col]=pd.to_numeric(df[col],errors="coerce").fillna(0)
 
@@ -72,13 +79,13 @@ for l in LISTES:
 df["exprimes"]=df["Exprimés"]
 df["exprimes_safe"]=df["exprimes"].replace(0,1)
 
-# leader bureau
 df["leader"]=df[LISTES].idxmax(axis=1)
 df.loc[df["exprimes"]==0,"leader"]="AUCUN"
 
 df["color"]=df["leader"].map(COULEURS)
 
 # top 3
+
 values=df[LISTES].values
 idx=np.argsort(-values,axis=1)
 
@@ -102,79 +109,19 @@ totaux=df[LISTES].sum()
 classement=totaux.sort_values(ascending=False)
 
 bureaux_total=len(df)
-bureaux_depouilles=(df["Exprimés"]>0).sum()
+bureaux_depouilles=(df["exprimes"]>0).sum()
 
-# barre progression
-progress_depouillement=bureaux_depouilles/bureaux_total if bureaux_total>0 else 0
+st.progress(bureaux_depouilles/bureaux_total)
+st.caption(f"Dépouillement : {bureaux_depouilles}/{bureaux_total}")
 
-st.progress(progress_depouillement)
-st.caption(f"Dépouillement : {bureaux_depouilles}/{bureaux_total} bureaux")
+participation=df["Votants"].sum()/df["Inscrits"].sum()*100
 
-# participation
-total_inscrits=df["Inscrits"].sum()
-total_votants=df["Votants"].sum()
+c1,c2,c3,c4=st.columns(4)
 
-if total_inscrits>0:
-    participation=total_votants/total_inscrits*100
-else:
-    participation=np.nan
-
-# voix restantes
-total_depouilles=(df["Exprimés"]+df["Blancs"]+df["Nuls"]).sum()
-voix_restantes=max(0,int(total_votants-total_depouilles))
-
-# avance
-if len(classement)>1:
-    avance=classement.iloc[0]-classement.iloc[1]
-else:
-    avance=0
-
-leader=classement.index[0] if totaux.sum()>0 else "—"
-
-# score minimum second
-score_min_second=0
-voix_necessaires=0
-
-if voix_restantes>0 and len(classement)>1:
-
-    premier=classement.index[0]
-    second=classement.index[1]
-
-    voix_premier=totaux[premier]
-    voix_second=totaux[second]
-
-    voix_necessaires=(voix_premier-voix_second)+1
-
-    score_min_second=(voix_second+voix_restantes)/(voix_premier+voix_second+voix_restantes)*100
-
-# -----------------------------
-# METRICS UI
-# -----------------------------
-
-c1,c2,c3,c4,c5,c6,c7=st.columns(7)
-
-if np.isnan(participation):
-    participation_display="—"
-else:
-    participation_display=f"{participation:.1f}%"
-
-c1.metric("Participation",participation_display)
-c2.metric("Liste en tête",leader)
-c3.metric("Avance",f"{avance} voix")
-c4.metric("Probabilité victoire","0%")
-
-with c5:
-    st.metric("Voix restantes",voix_restantes)
-
-with c6:
-    st.metric("Voix nécessaires au 2nd",voix_necessaires)
-
-with c7:
-    st.metric("Score minimum du second",f"{score_min_second:.1f}%")
-
-# -----------------------------
-# GEOJSON
-# -----------------------------
+c1.metric("Participation",f"{participation:.1f}%")
+c2.metric("Liste en tête",classement.index[0])
+c3.metric("Avance",classement.iloc[0]-classement.iloc[1])
+c4.metric("Bureaux dépouillés",f"{bureaux_depouilles}/{bureaux_total}")
 
 # -----------------------------
 # GEOJSON
@@ -182,30 +129,33 @@ with c7:
 
 @st.cache_data
 def load_geo():
-    with open("bureaux_noisy.geojson") as f:
-        return json.load(f)
 
-geojson = load_geo()
+    with open("bureaux_noisy.geojson") as f:
+
+        geo=json.load(f)
+
+    return geo
+
+geojson=load_geo()
 
 # dictionnaire bureau -> ligne dataframe
-bureau_dict = df.set_index("bureau_id").to_dict("index")
+df_map=df.set_index("bureau_id").to_dict("index")
 
 for feature in geojson["features"]:
 
-    bureau = int(feature["properties"]["bureau"])
+    bureau=int(feature["properties"]["bureau"])
 
-    # couleur par défaut
-    feature["properties"]["color"] = [200,200,200]
+    feature["properties"]["color"]=[200,200,200]
 
-    if bureau in bureau_dict:
+    if bureau in df_map:
 
-        ligne = bureau_dict[bureau]
+        ligne=df_map[bureau]
 
-        feature["properties"]["color"] = COULEURS.get(ligne["leader"], [200,200,200])
+        feature["properties"]["color"]=COULEURS.get(ligne["leader"],[200,200,200])
 
-        feature["properties"]["exprimes"] = int(ligne["exprimes"])
-        feature["properties"]["top1"] = ligne["top1"]
-        feature["properties"]["top1_pct"] = round(ligne["top1_pct"],1)
+        feature["properties"]["leader"]=ligne["leader"]
+        feature["properties"]["exprimes"]=int(ligne["exprimes"])
+
 # -----------------------------
 # CARTE
 # -----------------------------
@@ -215,10 +165,17 @@ layer=pdk.Layer(
     geojson,
     pickable=True,
     get_fill_color="properties.color",
-    get_line_color=[0,0,0]
+    get_line_color=[0,0,0],
+    auto_highlight=True
 )
 
 view=pdk.ViewState(latitude=48.889,longitude=2.462,zoom=13)
+
+deck=pdk.Deck(
+    layers=[layer],
+    initial_view_state=view,
+    tooltip={"html":"<b>Bureau {bureau}</b><br/>Exprimes : {exprimes}<br/>Leader : {leader}"}
+)
 
 col_map,col_chart=st.columns([2,1])
 
@@ -226,12 +183,7 @@ with col_map:
 
     st.subheader("Carte des bureaux")
 
-    st.pydeck_chart(
-        pdk.Deck(
-            layers=[layer],
-            initial_view_state=view
-        )
-    )
+    st.pydeck_chart(deck)
 
 with col_chart:
 
@@ -253,7 +205,4 @@ with col_chart:
 
 st.subheader("Résultats par bureau")
 
-table=df[["bureau_id","exprimes","leader"]+LISTES].copy()
-table=table.replace(0,"—")
-
-st.dataframe(table)
+st.dataframe(df[["bureau_id","exprimes","leader"]+LISTES])
