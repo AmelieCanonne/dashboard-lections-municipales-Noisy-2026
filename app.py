@@ -184,7 +184,7 @@ geojson=load_geo()
 for feature in geojson["features"]:
 
     bureau=feature["properties"]["bureau"]
-    ligne=df[df["bureau_id"]==bureau]
+    ligne=df[df["bureau_id"].astype(str)==str(bureau)]
 
     if not ligne.empty:
 
