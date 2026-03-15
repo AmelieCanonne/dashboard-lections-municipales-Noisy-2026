@@ -130,14 +130,14 @@ c4.metric("Bureaux dépouillés",f"{bureaux_depouilles}/{bureaux_total}")
 @st.cache_data
 def load_geo():
 
-    with open("bureaux_noisy.geojson") as f:
+    with open("/Users/ameliecanonne/App Elections/bureaux_noisy.geojson") as f:
 
         geo=json.load(f)
 
     return geo
 
 geojson=load_geo()
-
+st.write(geojson["features"][0]["properties"])
 # dictionnaire bureau -> ligne dataframe
 df_map=df.set_index("bureau_id").to_dict("index")
 
